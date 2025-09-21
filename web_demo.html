@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Music Recommendation System</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, input, button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        select, input {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .recommendations {
+            margin-top: 30px;
+        }
+        .track {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 15px;
+            border-left: 5px solid #667eea;
+        }
+        .track h3 {
+            margin: 0 0 10px 0;
+            color: #fff;
+        }
+        .track-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .confidence {
+            background: rgba(102, 126, 234, 0.3);
+            padding: 5px 10px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 0.9em;
+        }
+        .error {
+            background: rgba(255, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 AI Music Recommendation System</h1>
+        
+        <form id="recommendationForm">
+            <div class="form-group">
+                <label for="userId">User ID:</label>
+                <select id="userId" required>
+                    <option value="">Select a user...</option>
+                    <option value="user_001">User 001 (Rock/Pop lover)</option>
+                    <option value="user_002">User 002 (Jazz/Classical fan)</option>
+                    <option value="user_003">User 003 (Electronic/Hip-Hop enthusiast)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="context">Context (Optional):</label>
+                <select id="context">
+                    <option value="">No specific context</option>
+                    <option value="workout">Workout</option>
+                    <option value="study">Study</option>
+                    <option value="party">Party</option>
+                    <option value="romantic">Romantic</option>
+                    <option value="chill">Chill</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="numRecs">Number of Recommendations:</label>
+                <input type="number" id="numRecs" min="1" max="10" value="5">
+            </div>
+            
+            <button type="submit">Get Recommendations 🎼</button>
+        </form>
+        
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Getting your personalized recommendations...</p>
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="recommendations" class="recommendations"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        
+        document.getElementById('recommendationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const userId = document.getElementById('userId').value;
+            const context = document.getElementById('context').value;
+            const numRecs = parseInt(document.getElementById('numRecs').value);
+            
+            if (!userId) {
+                showError('Please select a user ID');
+                return;
+            }
+            
+            showLoading(true);
+            hideError();
+            clearRecommendations();
+            
+            try {
+                // Get user profile
+                const userResponse = await fetch(`${API_BASE}/users/${userId}`);
+                if (!userResponse.ok) {
+                    throw new Error('User not found');
+                }
+                const userProfile = await userResponse.json();
+                
+                // Prepare recommendation request
+                const requestBody = {
+                    user_profile: userProfile,
+                    num_recommendations: numRecs,
+                    context: context || null,
+                    exclude_recent: true
+                };
+                
+                // Get recommendations
+                const recResponse = await fetch(`${API_BASE}/recommendations`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                if (!recResponse.ok) {
+                    throw new Error('Failed to get recommendations');
+                }
+                
+                const recommendations = await recResponse.json();
+                displayRecommendations(recommendations);
+                
+            } catch (error) {
+                showError(`Error: ${error.message}. Make sure the API server is running on port 8000.`);
+            } finally {
+                showLoading(false);
+            }
+        });
+        
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        function clearRecommendations() {
+            document.getElementById('recommendations').innerHTML = '';
+        }
+        
+        function displayRecommendations(data) {
+            const container = document.getElementById('recommendations');
+            
+            let html = `<h2>🎵 Recommendations for ${data.user_id}</h2>`;
+            html += `<p>Generated: ${new Date(data.generated_at).toLocaleString()}</p>`;
+            
+            data.recommendations.forEach((rec, index) => {
+                const track = rec.track;
+                const confidence = Math.round(rec.confidence_score * 100);
+                
+                html += `
+                    <div class="track">
+                        <h3>${index + 1}. ${track.title}</h3>
+                        <p><strong>Artist:</strong> ${track.artist}</p>
+                        <div class="track-info">
+                            <div><strong>Album:</strong> ${track.album}</div>
+                            <div><strong>Genre:</strong> ${track.genre}</div>
+                            <div><strong>Year:</strong> ${track.release_year}</div>
+                            <div><strong>Energy:</strong> ${track.energy_level}/1.0</div>
+                        </div>
+                        <p><strong>Mood:</strong> ${track.mood_tags.join(', ')}</p>
+                        <p><strong>Why:</strong> ${rec.reason}</p>
+                        <div class="confidence">Confidence: ${confidence}%</div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // Check API availability on page load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_BASE}/`);
+                if (response.ok) {
+                    console.log('API server is running');
+                } else {
+                    showError('API server is not responding. Please start the server with: python api_server.py');
+                }
+            } catch (error) {
+                showError('Cannot connect to API server. Please start the server with: python api_server.py');
+            }
+        });
+    </script>
+</body>
+</html>
