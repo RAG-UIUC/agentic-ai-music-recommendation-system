@@ -1,1 +1,26 @@
-*.ipynb_checkpoints
+# Virtual environments
+myenv/
+.venv/
+env/
+venv/
+
+# Temp files of Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Vs   Code settings
+.vscode/
+
+# Temp files build (For packaging later if needed)
+build/
+dist/
+*.egg-info/
+
+# System files that should be ignored
+.DS_Store
+Thumbs.db
