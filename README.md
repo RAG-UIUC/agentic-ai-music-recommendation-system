@@ -1,8 +1,3 @@
 # agentic-ai-music-recommendation-system
 
-my change
-
-my change 2
-
-
-another change
+Uses an agentic approach to finding music recommendations
